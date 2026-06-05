@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model User {
+  id            Int           @id @default(autoincrement())
+  name          String
+  walletBalance Decimal       @map("wallet_balance") @db.Decimal(10, 2)
+  reservations  Reservation[]
+
+  @@map("users")
+}
+
+model Item {
+  id           Int           @id @default(autoincrement())
+  name         String
+  stock        Int
+  price        Decimal       @db.Decimal(10, 2)
+  reservations Reservation[]
+
+  @@map("items")
+}
+
+model Reservation {
+  id        String   @id @default(uuid())
+  userId    Int      @map("user_id")
+  itemId    Int      @map("item_id")
+  quantity  Int
+  status    String   @default("confirmed") // e.g., confirmed, cancelled
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+  item Item @relation(fields: [itemId], references: [id])
+
+  @@map("reservations")
+}
