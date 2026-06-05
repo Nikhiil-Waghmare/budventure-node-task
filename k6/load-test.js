@@ -31,10 +31,31 @@ export default function () {
 
   const res = http.post('http://localhost:3000/reserve-item', payload, params);
 
-  check(res, {
+  const isOkOrBadRequest = check(res, {
     'status is 200 or 400': (r) => r.status === 200 || r.status === 400,
-    // Status 400 would be "Insufficient stock"
   });
+
+  if (isOkOrBadRequest && res.body) {
+    try {
+      const json = JSON.parse(res.body);
+      if (res.status === 200) {
+        check(json, {
+          'success is true': (j) => j.success === true,
+          'reservationId is an integer': (j) => typeof j.reservationId === 'number',
+          'totalCost is correct': (j) => j.totalCost === 10.00,
+          'has remainingStock': (j) => typeof j.remainingStock === 'number',
+        });
+      } else {
+        check(json, {
+          'error string present': (j) => typeof j.error === 'string',
+        });
+      }
+    } catch (e) {
+      check(res, {
+        'response body is valid JSON': () => false,
+      });
+    }
+  }
 
   sleep(Math.random() * 0.5); // Add jitter to simulate real traffic
 }

@@ -77,6 +77,9 @@ export class ReservationService {
         remainingStock: newStock,
         remainingBalance: walletBalance.sub(totalCost).toNumber(),
       };
+    }, {
+      maxWait: 8000, // Wait up to 8 seconds for a connection in the pool
+      timeout: 10000 // Give the transaction 10 seconds to execute
     });
   }
 }
