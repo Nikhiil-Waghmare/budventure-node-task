@@ -15,17 +15,30 @@ export const idempotencyMiddleware = async (req: Request, res: Response, next: N
   }
 
   try {
-    const cachedResponse = await redis.get(`idempotency:${idempotencyKey}`);
+    const lockKey = `idempotency:lock:${idempotencyKey}`;
+    const responseKey = `idempotency:${idempotencyKey}`;
+
+    // Try to acquire lock
+    const lockAcquired = await redis.set(lockKey, 'processing', 'EX', 60, 'NX');
+
+    if (lockAcquired) {
+      req.idempotencyKey = idempotencyKey;
+      return next();
+    }
+
+    // Lock wasn't acquired. Check if response is already available.
+    const cachedResponse = await redis.get(responseKey);
 
     if (cachedResponse) {
       logger.info({ idempotencyKey }, 'Returning cached response for idempotent request');
-      res.json(JSON.parse(cachedResponse));
+      const { status, body } = JSON.parse(cachedResponse);
+      res.status(status).json(body);
       return;
     }
 
-    // Attach key to request so the controller/service can save the response later
-    req.idempotencyKey = idempotencyKey;
-    next();
+    // Lock wasn't acquired AND no response means another request is currently processing it
+    res.status(409).json({ error: 'Concurrent request is processing for this Idempotency-Key' });
+    return;
   } catch (error) {
     logger.error({ error, idempotencyKey }, 'Error checking idempotency key');
     next(error);

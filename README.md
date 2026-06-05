@@ -23,7 +23,24 @@ When a user reserves an item, we must ensure the stock doesn't drop below zero a
 In high-contention scenarios (like a flash sale where 100 users try to buy 5 items), OCC results in many transaction aborts and retries. Row-level pessimistic locking handles this more efficiently by queuing transactions at the database level.
 
 ## PgBouncer
-PgBouncer is configured in `transaction` mode. This allows Prisma to hold a connection only during an active transaction, drastically reducing the required number of physical Postgres connections when scaling horizontally.
+## PgBouncer Configuration & Tradeoffs
+
+PgBouncer is configured in **`transaction` pool mode**. 
+
+### 1. Selected Pool Mode
+*   **Mode:** `transaction`
+
+### 2. Why It Was Chosen & Advantages
+*   **Active Transactions Only:** Connections are only assigned to the client when a transaction is actively executing. As soon as the transaction commits or rolls back, the physical PostgreSQL connection is released back into the pool.
+*   **Scalability:** Allows a high number of concurrent client requests to share a small number of physical PostgreSQL connections, resolving the PostgreSQL connection limit issue.
+*   **Reduced Overhead:** Drastically lowers memory and connection overhead on the PostgreSQL server, enabling smoother horizontal scaling under peak load.
+
+### 3. Limitations & Tradeoffs
+*   **Prepared Statements:** Transaction mode does not support server-side prepared statements because subsequent queries in the same statement prep phase might run on different database connections. 
+    *   *Mitigation:* We append `pgbouncer=true` to the `DATABASE_URL` in `docker-compose.yml`, which instructs the Prisma engine to use client-side query compilation and avoid prepared statements.
+*   **Migration Execution:** Database schema migrations (`prisma migrate`) require session-level locks and commands which are incompatible with transaction pool mode.
+    *   *Mitigation:* We configure a direct database connection (`DIRECT_DATABASE_URL`) bypassing PgBouncer (connecting directly to port `5432` of the DB) via the `directUrl` parameter in `schema.prisma`.
+*   **Session Pinning / Advisory Locks:** Features like Postgres advisory locks or user session variables are lost when the transaction completes, as the connection is reassigned. This application avoids session variables and relies on table-level/row-level locks (`SELECT ... FOR UPDATE`) within transaction blocks, which is fully compatible.
 
 ## Setup Instructions
 

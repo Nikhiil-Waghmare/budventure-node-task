@@ -40,4 +40,16 @@ const startServer = async () => {
   }
 };
 
+// ─── Process-level crash guards ─────────────────────────────────────────────
+// Without these, a single unhandled async error will silently crash the process.
+process.on('uncaughtException', (error) => {
+  logger.fatal({ error }, 'Uncaught Exception — shutting down');
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  logger.fatal({ reason }, 'Unhandled Promise Rejection — shutting down');
+  process.exit(1);
+});
+
 startServer();

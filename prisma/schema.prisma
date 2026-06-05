@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["metrics"]
 }
 
 datasource db {
@@ -28,7 +29,7 @@ model Item {
 }
 
 model Reservation {
-  id        String   @id @default(uuid())
+  id        Int      @id @default(autoincrement())
   userId    Int      @map("user_id")
   itemId    Int      @map("item_id")
   quantity  Int

@@ -5,6 +5,8 @@ import { userRepository } from '../repositories/user.repository';
 import { reservationRepository } from '../repositories/reservation.repository';
 import { logger } from '../config/logger';
 
+import { Prisma } from '@prisma/client';
+
 export class ReservationError extends Error {
   constructor(public message: string, public statusCode: number) {
     super(message);
@@ -13,66 +15,67 @@ export class ReservationError extends Error {
 }
 
 export class ReservationService {
-  /**
-   * Reserves an item for a user.
-   * This method uses PostgreSQL row-level locking (SELECT FOR UPDATE) within a transaction
-   * to ensure concurrent requests do not oversell items or double-deduct from wallets.
-   */
-  async reserveItem(data: ReserveItemRequest): Promise<any> {
+  async reserveItem(data: ReserveItemRequest, maxRetries = 3): Promise<any> {
+    let attempt = 0;
+    while (attempt < maxRetries) {
+      try {
+        return await this.executeTransaction(data);
+      } catch (error: any) {
+        // P2034 is Prisma's code for transaction conflict/deadlock
+        if (error.code === 'P2034' || error.message.includes('deadlock') || error.message.includes('serialization')) {
+          attempt++;
+          logger.warn({ attempt, maxRetries }, 'Database deadlock or conflict, retrying transaction');
+          if (attempt >= maxRetries) throw error;
+          
+          // Exponential backoff
+          await new Promise((res) => setTimeout(res, Math.pow(2, attempt) * 50));
+        } else {
+          throw error;
+        }
+      }
+    }
+  }
+
+  private async executeTransaction(data: ReserveItemRequest): Promise<any> {
     const { userId, itemId, quantity } = data;
 
-    // Use Prisma interactive transaction to group operations atomically
     return await prisma.$transaction(async (tx) => {
-      // 1. Lock the item row
-      // We must lock the item first to prevent concurrent transactions from modifying its stock.
-      // If another transaction is currently holding the lock, this query will wait until that transaction completes.
       const item = await itemRepository.findByIdForUpdate(itemId, tx);
-      if (!item) {
-        throw new ReservationError('Item not found', 404);
-      }
+      if (!item) throw new ReservationError('Item not found', 404);
 
-      // 2. Validate stock
-      if (item.stock < quantity) {
-        throw new ReservationError('Insufficient stock', 400);
-      }
+      if (item.stock < quantity) throw new ReservationError('Insufficient stock', 400);
 
-      // 3. Lock the user row
-      // Lock the user to prevent concurrent wallet deductions.
-      // Note: Always locking tables in the same order (e.g., items then users) prevents deadlocks.
       const user = await userRepository.findByIdForUpdate(userId, tx);
-      if (!user) {
-        throw new ReservationError('User not found', 404);
-      }
+      if (!user) throw new ReservationError('User not found', 404);
 
-      // 4. Validate wallet balance
-      const totalCost = Number(item.price) * quantity;
-      if (Number(user.walletBalance) < totalCost) {
+      // Use Prisma Decimal for precise calculation
+      const price = new Prisma.Decimal(item.price);
+      const totalCost = price.mul(quantity);
+      const walletBalance = new Prisma.Decimal(user.walletBalance);
+
+      if (walletBalance.lessThan(totalCost)) {
         throw new ReservationError('Insufficient wallet balance', 400);
       }
 
-      // 5. Deduct stock
       const newStock = item.stock - quantity;
       await itemRepository.updateStock(itemId, newStock, tx);
 
-      // 6. Deduct wallet
-      await userRepository.deductWallet(userId, totalCost, tx);
+      // totalCost is a Decimal, we pass toNumber() or the Decimal itself depending on the repo implementation
+      // Our repo expects a number, let's pass a number for the decrement
+      await userRepository.deductWallet(userId, totalCost.toNumber(), tx);
 
-      // 7. Create reservation
       const reservation = await reservationRepository.createReservation(data, tx);
 
-      logger.info(
-        { userId, itemId, quantity, reservationId: reservation.id },
-        'Successfully reserved item'
-      );
+      logger.info({ userId, itemId, quantity, reservationId: reservation.id }, 'Successfully reserved item');
 
       return {
         success: true,
         reservationId: reservation.id,
         item: item.name,
         quantity,
-        totalCost,
+        totalCost: totalCost.toNumber(),
         remainingStock: newStock,
-        remainingBalance: Number(user.walletBalance) - totalCost,
+        remainingBalance: walletBalance.sub(totalCost).toNumber(),
       };
     });
   }

@@ -4,10 +4,15 @@ import { prisma } from '../config/prisma';
 
 export const getMetrics = async (req: Request, res: Response): Promise<void> => {
   try {
-    // We could update active connections metric here before returning
+    // Get custom prom-client metrics
+    const customMetrics = await register.metrics();
+    
+    // Get Prisma internal metrics
+    const prismaMetrics = await prisma.$metrics.prometheus();
+    
+    // Send combined metrics
     res.set('Content-Type', register.contentType);
-    const metrics = await register.metrics();
-    res.send(metrics);
+    res.send(customMetrics + '\n' + prismaMetrics);
   } catch (error) {
     res.status(500).send('Error generating metrics');
   }

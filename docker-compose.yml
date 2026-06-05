@@ -42,8 +42,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     environment:
-      DATABASE_URL: "postgresql://grocery_user:grocery_password@pgbouncer:5432/grocery_db?schema=public&pgbouncer=true"
-      DIRECT_DATABASE_URL: "postgresql://grocery_user:grocery_password@db:5432/grocery_db?schema=public"
+      DATABASE_URL: "postgresql://grocery_user:grocery_password@pgbouncer:5432/grocery_db?schema=public&pgbouncer=true&connection_limit=20&connect_timeout=5&statement_timeout=5000"
+      DIRECT_DATABASE_URL: "postgresql://grocery_user:grocery_password@db:5432/grocery_db?schema=public&connect_timeout=5&statement_timeout=5000"
       REDIS_URL: "redis://redis:6379"
       PORT: 3000
       NODE_ENV: production

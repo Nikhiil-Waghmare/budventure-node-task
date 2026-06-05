@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { reservationService, ReservationError } from '../services/reservation.service';
 import { idempotencyService } from '../services/idempotency.service';
 import { reservationCounter } from '../config/metrics';
-import { logger } from '../config/logger';
 
 export const reserveItemSchema = z.object({
   body: z.object({
@@ -21,7 +20,7 @@ export const reserveItem = async (req: Request, res: Response, next: NextFunctio
 
     // Save response for idempotency
     if (req.idempotencyKey) {
-      await idempotencyService.saveResponse(req.idempotencyKey, result);
+      await idempotencyService.saveResponse(req.idempotencyKey, 200, result);
     }
 
     reservationCounter.labels({ status: 'success' }).inc();
@@ -31,7 +30,11 @@ export const reserveItem = async (req: Request, res: Response, next: NextFunctio
     reservationCounter.labels({ status: 'failure' }).inc();
 
     if (error instanceof ReservationError) {
-      res.status(error.statusCode).json({ error: error.message });
+      const errorBody = { error: error.message };
+      if (req.idempotencyKey) {
+        await idempotencyService.saveResponse(req.idempotencyKey, error.statusCode, errorBody);
+      }
+      res.status(error.statusCode).json(errorBody);
       return;
     }
 
