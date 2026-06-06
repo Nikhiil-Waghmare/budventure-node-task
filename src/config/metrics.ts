@@ -1,17 +1,13 @@
 import client from 'prom-client';
 
-// Create a Registry
 export const register = new client.Registry();
 
-// Add a default label which is added to all metrics
 register.setDefaultLabels({
   app: 'grocery-reservation',
 });
 
-// Enable the collection of default metrics
 client.collectDefaultMetrics({ register });
 
-// Custom metrics
 export const httpRequestDurationMicroseconds = new client.Histogram({
   name: 'http_request_duration_ms',
   help: 'Duration of HTTP requests in ms',
@@ -34,7 +30,7 @@ export const activeDbConnections = new client.Gauge({
 export const reservationCounter = new client.Counter({
   name: 'reservation_count_total',
   help: 'Total number of reservations',
-  labelNames: ['status'], // success or failure
+  labelNames: ['status'], 
 });
 
 register.registerMetric(httpRequestDurationMicroseconds);

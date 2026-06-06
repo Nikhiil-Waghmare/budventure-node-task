@@ -1,4 +1,3 @@
--- CreateTable
 CREATE TABLE "users" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
@@ -7,7 +6,6 @@ CREATE TABLE "users" (
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "items" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
@@ -17,7 +15,6 @@ CREATE TABLE "items" (
     CONSTRAINT "items_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
 CREATE TABLE "reservations" (
     "id" SERIAL NOT NULL,
     "user_id" INTEGER NOT NULL,
@@ -29,8 +26,6 @@ CREATE TABLE "reservations" (
     CONSTRAINT "reservations_pkey" PRIMARY KEY ("id")
 );
 
--- AddForeignKey
 ALTER TABLE "reservations" ADD CONSTRAINT "reservations_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "reservations" ADD CONSTRAINT "reservations_item_id_fkey" FOREIGN KEY ("item_id") REFERENCES "items"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

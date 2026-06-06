@@ -21,13 +21,11 @@ export class ReservationService {
       try {
         return await this.executeTransaction(data);
       } catch (error: any) {
-        // P2034 is Prisma's code for transaction conflict/deadlock
         if (error.code === 'P2034' || error.message.includes('deadlock') || error.message.includes('serialization')) {
           attempt++;
           logger.warn({ attempt, maxRetries }, 'Database deadlock or conflict, retrying transaction');
           if (attempt >= maxRetries) throw error;
           
-          // Exponential backoff
           await new Promise((res) => setTimeout(res, Math.pow(2, attempt) * 50));
         } else {
           throw error;
@@ -48,7 +46,6 @@ export class ReservationService {
       const user = await userRepository.findByIdForUpdate(userId, tx);
       if (!user) throw new ReservationError('User not found', 404);
 
-      // Use Prisma Decimal for precise calculation
       const price = new Prisma.Decimal(item.price);
       const totalCost = price.mul(quantity);
       const walletBalance = new Prisma.Decimal(user.walletBalance);
@@ -60,8 +57,7 @@ export class ReservationService {
       const newStock = item.stock - quantity;
       await itemRepository.updateStock(itemId, newStock, tx);
 
-      // totalCost is a Decimal, we pass toNumber() or the Decimal itself depending on the repo implementation
-      // Our repo expects a number, let's pass a number for the decrement
+   
       await userRepository.deductWallet(userId, totalCost.toNumber(), tx);
 
       const reservation = await reservationRepository.createReservation(data, tx);
@@ -78,8 +74,8 @@ export class ReservationService {
         remainingBalance: walletBalance.sub(totalCost).toNumber(),
       };
     }, {
-      maxWait: 8000, // Wait up to 8 seconds for a connection in the pool
-      timeout: 10000 // Give the transaction 10 seconds to execute
+      maxWait: 8000, 
+      timeout: 10000 
     });
   }
 }

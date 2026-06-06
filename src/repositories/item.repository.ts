@@ -2,9 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 
 export class ItemRepository {
-  /**
-   * Locks the item row for update. Must be used within a transaction.
-   */
+ 
   async findByIdForUpdate(itemId: number, tx: Prisma.TransactionClient | typeof prisma = prisma) {
     const items = await tx.$queryRaw<any[]>`
       SELECT id, name, stock, price 

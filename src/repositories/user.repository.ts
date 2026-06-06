@@ -2,9 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 
 export class UserRepository {
-  /**
-   * Locks the user row for update. Must be used within a transaction.
-   */
+  
   async findByIdForUpdate(userId: number, tx: Prisma.TransactionClient | typeof prisma = prisma) {
     const users = await tx.$queryRaw<any[]>`
       SELECT id, name, wallet_balance as "walletBalance" 

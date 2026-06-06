@@ -6,7 +6,7 @@ export const options = {
   scenarios: {
     reservation_rush: {
       executor: 'per-vu-iterations',
-      vus: 100, // 100 users
+      vus: 100, 
       iterations: 1,
       maxDuration: '30s',
     },
@@ -14,12 +14,12 @@ export const options = {
 };
 
 export default function () {
-  const userId = __VU + 1; // VU IDs start from 1, users start from 2
+  const userId = __VU + 1; 
 
   const payload = JSON.stringify({
     userId: userId,
-    itemId: 101, // Premium Apples
-    quantity: 1, // Everyone trying to buy 1
+    itemId: 101, 
+    quantity: 1, 
   });
 
   const params = {
@@ -57,5 +57,5 @@ export default function () {
     }
   }
 
-  sleep(Math.random() * 0.5); // Add jitter to simulate real traffic
+  sleep(Math.random() * 0.5); 
 }

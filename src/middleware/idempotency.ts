@@ -18,7 +18,6 @@ export const idempotencyMiddleware = async (req: Request, res: Response, next: N
     const lockKey = `idempotency:lock:${idempotencyKey}`;
     const responseKey = `idempotency:${idempotencyKey}`;
 
-    // Try to acquire lock
     const lockAcquired = await redis.set(lockKey, 'processing', 'EX', 60, 'NX');
 
     if (lockAcquired) {
@@ -26,7 +25,6 @@ export const idempotencyMiddleware = async (req: Request, res: Response, next: N
       return next();
     }
 
-    // Lock wasn't acquired. Check if response is already available.
     const cachedResponse = await redis.get(responseKey);
 
     if (cachedResponse) {
@@ -36,7 +34,6 @@ export const idempotencyMiddleware = async (req: Request, res: Response, next: N
       return;
     }
 
-    // Lock wasn't acquired AND no response means another request is currently processing it
     res.status(409).json({ error: 'Concurrent request is processing for this Idempotency-Key' });
     return;
   } catch (error) {

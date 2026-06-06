@@ -18,7 +18,6 @@ export const reserveItem = async (req: Request, res: Response, next: NextFunctio
     
     const result = await reservationService.reserveItem({ userId, itemId, quantity });
 
-    // Save response for idempotency
     if (req.idempotencyKey) {
       await idempotencyService.saveResponse(req.idempotencyKey, 200, result);
     }
@@ -38,18 +37,14 @@ export const reserveItem = async (req: Request, res: Response, next: NextFunctio
       return;
     }
 
-    // Release idempotency lock for unexpected internal server errors (500)
-    // so that client retry requests are not blocked by a stale lock for 60s
     if (req.idempotencyKey) {
       try {
         await idempotencyService.deleteLock(req.idempotencyKey);
       } catch (redisError) {
-        // Log Redis deletion error but do not mask the primary database error
         req.log?.error({ err: redisError, idempotencyKey: req.idempotencyKey }, 'Failed to release idempotency lock after unexpected server error');
       }
     }
 
-    // Pass unexpected errors to global error handler
     next(error);
   }
 };

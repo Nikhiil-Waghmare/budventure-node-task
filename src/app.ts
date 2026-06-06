@@ -10,10 +10,8 @@ const app = express();
 
 app.use(express.json());
 
-// Request ID middleware
 app.use(requestIdMiddleware);
 
-// Pino logger middleware
 app.use(
   pinoHttp({
     logger,
@@ -23,7 +21,6 @@ app.use(
   })
 );
 
-// Metrics middleware
 app.use((req, res, next) => {
   const start = process.hrtime();
   res.on('finish', () => {
@@ -36,10 +33,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Mount routes
 app.use('/', routes);
 
-// Global Error Handler
 app.use(errorHandler);
 
 export default app;

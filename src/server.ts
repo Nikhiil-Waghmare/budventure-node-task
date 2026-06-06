@@ -6,7 +6,6 @@ import { redis } from './config/redis';
 
 const startServer = async () => {
   try {
-    // Check DB connection
     await prisma.$connect();
     logger.info('Connected to PostgreSQL');
 
@@ -14,7 +13,6 @@ const startServer = async () => {
       logger.info(`Server listening on port ${env.PORT} in ${env.NODE_ENV} mode`);
     });
 
-    // Graceful shutdown
     const shutdown = async () => {
       logger.info('Shutting down server...');
       server.close(async () => {
@@ -24,7 +22,6 @@ const startServer = async () => {
         process.exit(0);
       });
       
-      // Force close if taking too long
       setTimeout(() => {
         logger.error('Forcing shutdown after timeout');
         process.exit(1);
@@ -40,8 +37,7 @@ const startServer = async () => {
   }
 };
 
-// ─── Process-level crash guards ─────────────────────────────────────────────
-// Without these, a single unhandled async error will silently crash the process.
+
 process.on('uncaughtException', (error) => {
   logger.fatal({ error }, 'Uncaught Exception — shutting down');
   process.exit(1);

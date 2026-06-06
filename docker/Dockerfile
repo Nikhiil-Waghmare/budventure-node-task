@@ -2,18 +2,14 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
 COPY package.json package-lock.json* ./
 RUN npm install
 
-# Copy source and generate prisma
 COPY . .
 RUN npm run db:generate
 
-# Build TS
 RUN npm run build
 
-# Production image
 FROM node:22-alpine
 
 WORKDIR /app

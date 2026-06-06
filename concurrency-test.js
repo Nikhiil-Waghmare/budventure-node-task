@@ -10,8 +10,8 @@ async function makeRequest(vuId) {
         'Idempotency-Key': idempotencyKey
       },
       body: JSON.stringify({
-        userId: vuId + 2, // Start from user 2 (as user 1 is Alice)
-        itemId: 101, // Premium Apples (initialized with stock 5)
+        userId: vuId + 2, 
+        itemId: 101, 
         quantity: 1
       })
     });

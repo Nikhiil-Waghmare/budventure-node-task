@@ -15,7 +15,6 @@ router.post(
 
 router.get('/metrics', getMetrics);
 
-// Basic health check
 router.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
